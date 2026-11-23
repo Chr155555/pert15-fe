@@ -1,69 +1,109 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { deletePost } from "./actions";
 
-export default function Home() {
+export default async function Home() {
+  let posts: Array<{
+    id: number;
+    title: string;
+    content: string;
+    createdAt: Date;
+  }> = [];
+
+  try {
+    posts = await prisma.post.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (err) {
+    console.error("Failed to query posts from Prisma:", err);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 className="fw-bold mb-1">My Prisma & SQLite Blog</h1>
+          <p className="text-muted mb-0">
+            Worksheet 4 - Deployment with Vercel & SQLite Database
           </p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <Link href="/create" className="btn btn-primary">
+          + Create New Post
+        </Link>
+      </div>
+
+      <div className="alert alert-info mb-4" role="alert">
+        <strong>Catatan Modul:</strong> Data database dibaca langsung dari SQLite
+        (<code>dev.db</code>) via Prisma ORM. File database telah di-seed secara
+        lokal dan dibundling untuk deployment Vercel.
+      </div>
+
+      {posts.length === 0 ? (
+        <div className="card text-center p-5">
+          <p className="text-muted mb-3">Belum ada post di database.</p>
+          <div>
+            <Link href="/create" className="btn btn-outline-primary">
+              Buat Post Pertama
+            </Link>
+          </div>
         </div>
-      </main>
+      ) : (
+        <div className="row g-4">
+          {posts.map((post) => (
+            <div key={post.id} className="col-12 col-md-6 col-lg-4">
+              <div className="card h-100 shadow-sm border-0">
+                <div className="card-body d-flex flex-column">
+                  <h5 className="card-title fw-bold text-primary">
+                    <Link
+                      href={`/posts/${post.id}`}
+                      className="text-decoration-none text-primary"
+                    >
+                      {post.title}
+                    </Link>
+                  </h5>
+                  <p className="card-text text-secondary flex-grow-1">
+                    {post.content.length > 120
+                      ? post.content.substring(0, 120) + "..."
+                      : post.content}
+                  </p>
+                  <div className="text-muted small mb-3">
+                    📅 {new Date(post.createdAt).toLocaleDateString("id-ID", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </div>
+                  <div className="d-flex gap-2">
+                    <Link
+                      href={`/posts/${post.id}`}
+                      className="btn btn-sm btn-outline-primary"
+                    >
+                      Detail
+                    </Link>
+                    <Link
+                      href={`/edit/${post.id}`}
+                      className="btn btn-sm btn-outline-secondary"
+                    >
+                      Edit
+                    </Link>
+                    <form
+                      action={deletePost.bind(null, post.id)}
+                      className="ms-auto"
+                    >
+                      <button
+                        type="submit"
+                        className="btn btn-sm btn-outline-danger"
+                      >
+                        Hapus
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
